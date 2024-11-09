@@ -1,71 +1,81 @@
-#include <LiquidCrystal.h>
+#define BLYNK_TEMPLATE_ID "TMPL3A5G0q7kO"
+#define BLYNK_TEMPLATE_NAME "weather"
 
+#define BLYNK_PRINT Serial
+
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
 #include <DHT.h>
-#include <DHT_U.h>
 
+// Blynk authentication token
+char auth[] = "fqlTo3uJv0eAGHje7y5Mw4rMWPWdh16l"; // Replace with your Blynk auth token
 
-const int RS = 8, EN = 9, D4 = 5, D5 = 4, D6 = 3, D7 = 2;
-LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
-const int red = 13;
-const int green = 12;
+// WiFi credentials
+char ssid[] = "OPPO A77s";  // Replace with your WiFi SSID
+char pass[] = "k6euqgyx";  // Replace with your WiFi password
 
-const int buzzer = 10;
-//float threshold_temperature =  30; 
-DHT dth11(6,DHT11);
+// DHT sensor setup
+#define DHTPIN D5
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+BlynkTimer timer;
+
+void sendSensorData() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  Blynk.virtualWrite(V1, h);
+  Blynk.virtualWrite(V0, t);
+  
+  Serial.print("Humidity: ");
+  Serial.print(h);
+  Serial.print(" %\t");
+  Serial.print("Temperature: ");
+  Serial.print(t);
+  Serial.println(" *C");
+}
+
 void setup() {
-  pinMode(green, OUTPUT);
-  pinMode(red, OUTPUT);
-  pinMode(buzzer, OUTPUT);
-  lcd.begin(16, 2); // set up number of columns and rows
- 
-  lcd.setCursor(0, 0); 
-  lcd.print("Smart weather mon");
-  lcd.setCursor(0, 1);
-  lcd.print("itoring system");
-  delay(1000);
- 
-  dth11.begin();
   Serial.begin(9600);
-  digitalWrite(red, LOW);
-  digitalWrite(green, LOW);
+  delay(100);
+  
+  Serial.println("Starting...");
+  WiFi.begin(ssid, pass);
+  Serial.println("Connecting to WiFi...");
+  
+//  int timeout = 30;
+//  while (WiFi.status() != WL_CONNECTED && timeout > 0) {
+//    delay(1000);
+//    Serial.print(".");
+//    timeout--;
+//  }
+  
+//  if (WiFi.status() == WL_CONNECTED) {
+//    Serial.println("\nConnected to WiFi");
+    Blynk.config(auth);
+//    if (Blynk.connect()) {
+//      Serial.println("Connected to Blynk server");
+//    } else {
+//      Serial.println("Failed to connect to Blynk server");
+//    }
+//  } else {
+//    Serial.println("\nFailed to connect to WiFi");
+//    return;
+//  }
+
+  dht.begin();
+  Serial.println("DHT sensor initialized.");
+
+  timer.setInterval(1000L, sendSensorData);
 }
 
 void loop() {
-  float temperature = dth11.readTemperature();
-  float humidity = dth11.readHumidity();
-  if(temperature >= 32 || humidity >=80){
-    lcd.clear();
-    lcd.setCursor(0,0);
-    digitalWrite(red,HIGH);
-    digitalWrite(green, LOW);
-    lcd.print("TEMP('C) : ");
-    lcd.setCursor(11,0);
-    lcd.print(temperature);
-    lcd.setCursor(0,1);
-    lcd.print("HUMIDITY : ");
-    lcd.setCursor(11,1);
-    lcd.print(humidity);
-    digitalWrite(buzzer, HIGH);
-    Serial.print("Temperature");
-    Serial.println(temperature);
-      
-    }
-    
-  
-  else{
-    digitalWrite(green , HIGH);
-    digitalWrite(red, LOW);
-    digitalWrite(buzzer , LOW);
-    lcd.print("TEMP('C) : ");
-    lcd.setCursor(11,0);
-    lcd.print(temperature);
-    lcd.print("HUMIDITY : ");
-    lcd.setCursor(11,1);
-    lcd.print(humidity);
-        Serial.print("Temperature");
-    Serial.println(temperature);
-  }
-  
-  
-
+  Blynk.run();
+  timer.run();
 }
